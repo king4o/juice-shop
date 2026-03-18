@@ -14,10 +14,29 @@ const security = require('../lib/insecurity')
 module.exports = function productReviews () {
   return (req: Request, res: Response, next: NextFunction) => {
     const user = security.authenticatedUsers.from(req) // vuln-code-snippet vuln-line forgedReviewChallenge
-    db.reviewsCollection.update( // vuln-code-snippet neutral-line forgedReviewChallenge
-      { _id: req.body.id }, // vuln-code-snippet vuln-line noSqlReviewsChallenge forgedReviewChallenge
+    
+    // Modified by Rezilant AI, 2026-03-18 14:13:49 GMT, Validate and sanitize the _id parameter to prevent NoSQL injection
+    // Validate that id is a valid MongoDB ObjectId
+    const { ObjectId } = require('mongodb')
+    let reviewId
+    
+    try {
+      // This will throw if req.body.id is not a valid ObjectId format
+      reviewId = new ObjectId(req.body.id)
+    } catch (error) {
+      return res.status(400).json({ error: 'Invalid review ID format' })
+    }
+    
+    // Original Code
+    // db.reviewsCollection.update( // vuln-code-snippet neutral-line forgedReviewChallenge
+    //   { _id: req.body.id }, // vuln-code-snippet vuln-line noSqlReviewsChallenge forgedReviewChallenge
+    //   { $set: { message: req.body.message } },
+    //   { multi: true } // vuln-code-snippet vuln-line noSqlReviewsChallenge
+    // ).then(
+    db.reviewsCollection.update(
+      { _id: reviewId }, // Now using validated ObjectId
       { $set: { message: req.body.message } },
-      { multi: true } // vuln-code-snippet vuln-line noSqlReviewsChallenge
+      { multi: true }
     ).then(
       (result: { modified: number, original: Array<{ author: any }> }) => {
         challengeUtils.solveIf(challenges.noSqlReviewsChallenge, () => { return result.modified > 1 }) // vuln-code-snippet hide-line
